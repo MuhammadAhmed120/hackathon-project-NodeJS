@@ -32,9 +32,7 @@ router.post('/user', async (req, res) => {
             if (loginUser.userPassword == userPassword) {
                 const loginToken = jwt.sign({ user_id: loginUser._id, userEmail: loginUser.userEmail }, process.env.JWT_SECRET, { expiresIn: '365d' })
 
-                const { user } = loginUser.toObject();
-
-                return res.status(200).send({ status: 200, message: 'You are successfully logged in.', user, token: loginToken })
+                return res.status(200).send({ status: 200, message: 'You are successfully logged in.', user: loginUser, token: loginToken })
             }
 
             return res.status(401).send({ status: 401, message: 'Password you entered is incorrect.' })
