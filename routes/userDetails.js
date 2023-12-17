@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import verifyToken from "../token/verifyToken.js";
 import UserModel from "../models/user.js";
+import PanelModel from "../models/admin.js";
 
 const router = express.Router()
 
@@ -67,5 +68,28 @@ router.get("/all-users", async (req, res) => {
         return res.status(500).send({ status: 500, error: error.message })
     }
 })
+
+
+// ADMIN DATA
+
+router.get("/admin-account", verifyToken, async (req, res) => {
+    try {
+        const { decodedToken } = req
+
+        console.log(decodedToken)
+
+        const panelID = new mongoose.Types.ObjectId(decodedToken.panel_id)
+        const panelData = await PanelModel.findById({ _id: panelID }).select('-panelPassword')
+
+        if (panelData && panelID) {
+            return res.status(200).send({ status: 200, panelData });
+        } else {
+            return res.status(404).send({ status: 404, error: 'Admin not found.' })
+        }
+    } catch (error) {
+        return res.status(500).send({ status: 500, error: error.message })
+    }
+})
+
 
 export default router;
