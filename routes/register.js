@@ -84,12 +84,12 @@ const registerUserValidate = Joi.object({
         .message('Phone number must be exactly 11 digits.'),
 })
 
-router.post('/user', upload.single('userProfileImage'), async (req, res) => {
+router.post('/user', async (req, res) => {
     try {
         const validateError = await registerUserValidate.validateAsync(req.body);
 
         // Create the user with Cloudinary image URL
-        const registerUser = await UserModel.create({ ...req.body, userProfileImage: req.file.path });
+        const registerUser = await UserModel.create({ ...req.body });
 
 
         if (!registerUser) {
