@@ -36,55 +36,50 @@ router.post('/checkin', upload.single('file'), async (req, res) => {
 
         const userID = new mongoose.Types.ObjectId(userId)
 
-        // const user = await UserModel.findById({ _id: userID });
+        const user = await UserModel.findById({ _id: userID });
 
         if (!userId) {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        const today = new Date();
+        const formattedToday = formatDate(today);
+
+        // Check if the user has already checked in
+        let alreadyCheckedIn = false;
+
+        if (user.attendance.length > 0) {
+            const lastCheckInTime = new Date(user.attendance[user.attendance.length - 1].checkInTime);
+            const timeDifference = today.getTime() - lastCheckInTime.getTime();
+            const hoursDifference = timeDifference / (1000 * 60 * 60); // Convert milliseconds to hours
+
+            // If the last check-in is within 24 hours, prevent check-in
+            if (hoursDifference < 24) {
+                alreadyCheckedIn = true;
+            }
+        }
+
+        if (alreadyCheckedIn) {
+            return res.status(400).json({ message: 'User checked in within the last 24 hours' });
+        }
+
+        if (alreadyCheckedIn) {
+            return res.status(400).json({ message: 'User has already checked in today' });
+        }
+
         const newAttendance = {
-            checkInTime: formatDate(new Date()),
+            checkInTime: formatDate(today),
             checkInLocation,
             selfieImage,
         };
 
         const userAttend = await UserModel.updateOne(
             { _id: userID },
-            { $push: { attendance: newAttendance } }
+            { $push: { attendance: newAttendance } },
+            { new: true }
         );
 
         return res.status(200).json({ message: 'Attendance checked in successfully', userAttend });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Server Error' });
-    }
-});
-
-// Route to handle checking out attendance for a user
-router.post('/checkout', async (req, res) => {
-    try {
-        const { error } = checkOutSchema.validate(req.body);
-        if (error) {
-            return res.status(400).json({ message: error.details[0].message });
-        }
-
-        const { userId } = req.body;
-        const user = await UserModel.findById(userId);
-
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        const latestAttendance = user.attendance[user.attendance.length - 1];
-        if (latestAttendance && !latestAttendance.checkOutTime) {
-            latestAttendance.checkOutTime = new Date();
-        } else {
-            return res.status(400).json({ message: 'No check-in found for the user' });
-        }
-
-        await user.save();
-
-        return res.status(200).json({ message: 'Attendance checked out successfully' });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Server Error' });
