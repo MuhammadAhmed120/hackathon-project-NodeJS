@@ -2,45 +2,45 @@ import express from 'express'
 import Joi from 'joi'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-import multer from 'multer'
-import { v2 as cloudinary } from 'cloudinary';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
+// import multer from 'multer'
+// import { v2 as cloudinary } from 'cloudinary';
+// import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import UserModel from '../models/user.js'
 import PanelModel from '../models/admin.js'
 
 const router = express.Router()
 
-let { CLOUDINARY_NAME, CLOUDINARY_API, CLOUDINARY_SECRET } = process.env
+// let { CLOUDINARY_NAME, CLOUDINARY_API, CLOUDINARY_SECRET } = process.env
 
-cloudinary.config({
-    cloud_name: CLOUDINARY_NAME,
-    api_key: CLOUDINARY_API,
-    api_secret: CLOUDINARY_SECRET,
-});
+// cloudinary.config({
+//     cloud_name: CLOUDINARY_NAME,
+//     api_key: CLOUDINARY_API,
+//     api_secret: CLOUDINARY_SECRET,
+// });
 
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-        folder: "User_Picture",
-        public_id: (req, file) => `UserImage`
-    },
-});
+// const storage = new CloudinaryStorage({
+//     cloudinary: cloudinary,
+//     params: {
+//         folder: "User_Picture",
+//         public_id: (req, file) => `UserImage`
+//     },
+// });
 
-const upload = multer({
-    storage,
-    fileFilter: function (req, file, cb) {
-        if (!file.mimetype.includes('image/')) {
-            return cb(new Error('Only images allowed!'));
-        }
+// const upload = multer({
+//     storage,
+//     fileFilter: function (req, file, cb) {
+//         if (!file.mimetype.includes('image/')) {
+//             return cb(new Error('Only images allowed!'));
+//         }
 
-        const allowedExtensions = ['image/jpeg', 'image/png'];
-        if (!allowedExtensions.includes(file.mimetype)) {
-            return cb(new Error('Only JPG, JPEG, and PNG files are allowed!'));
-        }
+//         const allowedExtensions = ['image/jpeg', 'image/png'];
+//         if (!allowedExtensions.includes(file.mimetype)) {
+//             return cb(new Error('Only JPG, JPEG, and PNG files are allowed!'));
+//         }
 
-        cb(null, true); // Accept the file if everything is OK
-    }
-});
+//         cb(null, true); // Accept the file if everything is OK
+//     }
+// });
 
 // router.use('/image', upload.single('userProfileImage'), async (req, res) => {
 //     try {
@@ -88,9 +88,7 @@ router.post('/user', async (req, res) => {
     try {
         const validateError = await registerUserValidate.validateAsync(req.body);
 
-        // Create the user with Cloudinary image URL
         const registerUser = await UserModel.create({ ...req.body });
-
 
         if (!registerUser) {
             return res.status(400).send({ status: 400, message: 'Something went wrong, try again later.' });
