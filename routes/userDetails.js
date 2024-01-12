@@ -76,8 +76,6 @@ router.get("/admin-account", verifyToken, async (req, res) => {
     try {
         const { decodedToken } = req
 
-        console.log(decodedToken)
-
         const panelID = new mongoose.Types.ObjectId(decodedToken.panel_id)
         const panelData = await PanelModel.findById({ _id: panelID }).select('-panelPassword')
 
