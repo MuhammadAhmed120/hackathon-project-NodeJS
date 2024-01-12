@@ -74,11 +74,16 @@ router.post('/admin', async (req, res) => {
             const comparePassword = await bcrypt.compare(panelPassword, loginPanel.panelPassword);
 
             if (comparePassword) {
-                const loginToken = jwt.sign({ panel_id: loginPanel._id, panelEmail: loginPanel.panelEmail }, process.env.JWT_SECRET, { expiresIn: '365d' })
+                const loginToken = jwt.sign({ panel_id: loginPanel._id, panelEmail: loginPanel.panelEmail }, process.env.JWT_SECRET, { expiresIn: '5d' })
 
-                const { panel } = loginPanel.toObject();
+                const { panelEmail, panelName } = loginPanel.toObject()
 
-                return res.status(200).send({ status: 200, message: 'Admin is successfully logged in.', panel, token: loginToken })
+                const updatedPanel = {
+                    panelEmail,
+                    panelName
+                }
+
+                return res.status(200).send({ status: 200, message: 'Admin is successfully logged in.', panel: updatedPanel, token: loginToken })
             }
 
             return res.status(401).send({ status: 401, message: 'Password you entered is incorrect.' })
@@ -92,7 +97,7 @@ router.post('/admin', async (req, res) => {
             return res.status(300).send({ status: 300, error: error.message, message: errorUpdate })
         }
 
-        return res.status(300).send({ status: 300, message: error.message })
+        return res.status(300).send({ status: 300, message: error.message, error: error })
     }
 })
 
