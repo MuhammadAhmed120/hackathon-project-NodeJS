@@ -2,65 +2,46 @@ import express from 'express'
 import Joi from 'joi'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-// import multer from 'multer'
-// import { v2 as cloudinary } from 'cloudinary';
-// import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import multer from 'multer'
+import cloudinary from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import UserModel from '../models/user.js'
 import PanelModel from '../models/admin.js'
 
 const router = express.Router()
 
-// let { CLOUDINARY_NAME, CLOUDINARY_API, CLOUDINARY_SECRET } = process.env
+let { CLOUDINARY_NAME, CLOUDINARY_API, CLOUDINARY_SECRET } = process.env
 
-// cloudinary.config({
-//     cloud_name: CLOUDINARY_NAME,
-//     api_key: CLOUDINARY_API,
-//     api_secret: CLOUDINARY_SECRET,
-// });
+cloudinary.config({
+    cloud_name: CLOUDINARY_NAME,
+    api_key: CLOUDINARY_API,
+    api_secret: CLOUDINARY_SECRET,
+});
 
-// const storage = new CloudinaryStorage({
-//     cloudinary: cloudinary,
-//     params: {
-//         folder: "User_Picture",
-//         public_id: (req, file) => `UserImage`
-//     },
-// });
+const storage = multer.diskStorage({
+    filename: function (req, file, cb) {
+        cb(null, 'profilePicture')
+    }
+});
 
-// const upload = multer({
-//     storage,
-//     fileFilter: function (req, file, cb) {
-//         if (!file.mimetype.includes('image/')) {
-//             return cb(new Error('Only images allowed!'));
-//         }
+const upload = multer({
+    storage,
+    fileFilter: function (req, file, cb) {
+        if (!file.mimetype.includes('image')) {
+            return cb(new Error('Only images allowed!'));
+        }
 
-//         const allowedExtensions = ['image/jpeg', 'image/png'];
-//         if (!allowedExtensions.includes(file.mimetype)) {
-//             return cb(new Error('Only JPG, JPEG, and PNG files are allowed!'));
-//         }
+        const allowedExtensions = ['image/jpeg', 'image/png'];
+        if (!allowedExtensions.includes(file.mimetype)) {
+            return cb(new Error('Only JPG, JPEG, and PNG files are allowed!'));
+        }
 
-//         cb(null, true); // Accept the file if everything is OK
-//     }
-// });
-
-// router.use('/image', upload.single('userProfileImage'), async (req, res) => {
-//     try {
-//         console.log(req.file)
-
-//         return res.status(200).send({ status: 200, message: 'User image.', user: req.file.path });
-//     } catch (error) {
-//         // if (error.message.includes('"user')) {
-//         //     const errorUpdate = error.message.slice(5).replace('"', '')
-
-//         //     return res.status(300).send({ status: 300, error: error.message, message: errorUpdate })
-//         // }
-
-//         return res.status(300).send({ status: 300, message: error })
-//     }
-// })
-
-// USER REGISTER
+        cb(null, true); // Accept the file if everything is OK
+    }
+});
 
 const registerUserValidate = Joi.object({
+    image: Joi.string(),
     userEmail: Joi.string()
         .email({ tlds: { allow: false } })
         .message('Email address is invalid.')
@@ -84,17 +65,32 @@ const registerUserValidate = Joi.object({
         .message('Phone number must be exactly 11 digits.'),
 })
 
-router.post('/user', async (req, res) => {
+router.post('/user', upload.single('image'), async (req, res) => {
+    console.log(req.body)
     try {
         const validateError = await registerUserValidate.validateAsync(req.body);
 
-        const registerUser = await UserModel.create({ ...req.body });
+        const cloudinaryOptions = {
+            folder: 'User_Picture',
+            public_id: req.file.originalname,
+        };
 
-        if (!registerUser) {
-            return res.status(400).send({ status: 400, message: 'Something went wrong, try again later.' });
-        }
+        await cloudinary.v2.uploader.upload(req.file.path, cloudinaryOptions, async (err, result) => {
+            if (err) {
+                console.log(err)
+                res.status(300).send({ err })
+                return
+            }
+            console.log(result)
 
-        return res.status(200).send({ status: 200, message: 'User is successfully registered.', user: registerUser });
+            const registerUser = await UserModel.create({ ...req.body, userProfileImage: result.url });
+
+            if (!registerUser) {
+                return res.status(400).send({ status: 400, message: 'Something went wrong, try again later.' });
+            }
+
+            return res.status(200).send({ status: 200, message: 'User is successfully registered.', user: registerUser });
+        })
 
     } catch (error) {
         if (error.message.includes('"user')) {

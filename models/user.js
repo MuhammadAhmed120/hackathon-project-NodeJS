@@ -8,6 +8,7 @@ const userSchema = new Schema({
     userPassword: { type: String, required: true },
     userNumber: { type: String, required: false, unique: true },
     userID: { type: String, required: false, unique: true },
+    userProfileImage: { type: String },
     attendance: [
         {
             checkInTime: { type: String, required: true },
@@ -19,7 +20,6 @@ const userSchema = new Schema({
             timestamps: true,
         }
     ],
-    // userProfileImage: { type: String },
     resetPasswordToken: String,
     resetPasswordExpires: Date
 }, {
