@@ -13,6 +13,7 @@ const userSchema = new Schema({
         {
             checkInTime: { type: String, required: true },
             checkOutTime: { type: Date },
+            attend: { type: Boolean },
             checkInLocation: { type: String },
             selfieImage: { type: String },
         },

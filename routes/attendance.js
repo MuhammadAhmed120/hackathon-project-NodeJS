@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import mongoose from 'mongoose';
+import cron from 'node-cron';
 import UserModel from '../models/user.js';
 
 const router = express.Router();
@@ -17,7 +18,8 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-function formatDate(date) {
+// FORAMTTING DATE
+const formatDate = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -27,6 +29,65 @@ function formatDate(date) {
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
+
+
+const checkTimeSpan = (user, todayDate) => {
+    const today = todayDate || new Date()
+
+    const lastCheckInTime = new Date(user.attendance[user.attendance?.length - 1]?.checkInTime);
+    const timeDifference = today.getTime() - lastCheckInTime.getTime();
+    const hoursDifference = timeDifference / (1000 * 60 * 60); // Convert milliseconds to hours
+
+    // If the last check-in is within 24 hours, prevent check-in - ALREADY CHECKED
+    if (hoursDifference <= 24) {
+        return true;
+    }
+
+    return false
+}
+
+// Mark users as not checked in at 10PM (Mon, Wed, Fri)
+cron.schedule('0 22 * * 1,3,5', async () => {
+    try {
+        const allUsers = await UserModel.find()
+        const todayDate = formatDate(new Date());
+
+        const newAttendance = {
+            checkInTime: todayDate,
+            attend: false,
+            checkInLocation: 'None',
+            selfieImage: null
+        }
+
+        for (const user of allUsers) {
+            let updateQuery;
+            if (user.attendance?.length > 0) {
+                const checked = checkTimeSpan(user);
+
+                if (!checked) {
+                    updateQuery = {
+                        $push: { attendance: newAttendance }
+                    };
+                }
+            } else {
+                updateQuery = {
+                    $push: { attendance: newAttendance }
+                };
+            }
+
+            if (updateQuery) {
+                await UserModel.findOneAndUpdate(
+                    { _id: user._id },
+                    updateQuery,
+                    { new: true }
+                );
+            }
+        }
+    }
+    catch (error) {
+        console.error("Error in attendFalse:", error);
+    }
+})
 
 // Attendance check-in route with file upload
 router.post('/checkin', upload.single('file'), async (req, res) => {
@@ -42,36 +103,32 @@ router.post('/checkin', upload.single('file'), async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const today = new Date();
-        const formattedToday = formatDate(today);
+        const formattedToday = formatDate(new Date());
 
         // Check if the user has already checked in
         let alreadyCheckedIn = false;
 
-        if (user.attendance.length > 0) {
-            const lastCheckInTime = new Date(user.attendance[user.attendance.length - 1].checkInTime);
-            const timeDifference = today.getTime() - lastCheckInTime.getTime();
-            const hoursDifference = timeDifference / (1000 * 60 * 60); // Convert milliseconds to hours
+        console.log(user)
 
-            // If the last check-in is within 24 hours, prevent check-in
-            if (hoursDifference < 24) {
-                alreadyCheckedIn = true;
-            }
+        if (user.attendance !== null && user.attendance?.length > 0) {
+            const checked = checkTimeSpan(user)
+            alreadyCheckedIn = checked
         }
 
+        // IF CHECKED IN PREVENT
         if (alreadyCheckedIn) {
             return res.status(400).json({ message: 'User checked in within the last 24 hours' });
         }
 
-        if (alreadyCheckedIn) {
-            return res.status(400).json({ message: 'User has already checked in today' });
-        }
-
+        // ELSE CHECKED ATTENDANCE
         const newAttendance = {
-            checkInTime: formatDate(today),
+            checkInTime: formattedToday,
+            attend: true,
             checkInLocation,
             selfieImage,
         };
+
+        console.log("ATTEND TRUE")
 
         const userAttend = await UserModel.updateOne(
             { _id: userID },
