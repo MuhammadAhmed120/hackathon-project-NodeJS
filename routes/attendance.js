@@ -32,6 +32,7 @@ const formatDate = (date) => {
 
 
 const checkTimeSpan = (user, todayDate) => {
+    console.log("CHECK TIME")
     const today = todayDate || new Date()
 
     const lastCheckInTime = new Date(user.attendance[user.attendance?.length - 1]?.checkInTime);
@@ -48,7 +49,9 @@ const checkTimeSpan = (user, todayDate) => {
 
 // Mark users as not checked in at 10PM (Mon, Wed, Fri)
 cron.schedule('0 22 * * 1,3,5', async () => {
+    console.log("ENTERED CRON")
     try {
+
         const allUsers = await UserModel.find()
         const todayDate = formatDate(new Date());
 
@@ -108,7 +111,6 @@ router.post('/checkin', upload.single('file'), async (req, res) => {
         // Check if the user has already checked in
         let alreadyCheckedIn = false;
 
-        console.log(user)
 
         if (user.attendance !== null && user.attendance?.length > 0) {
             const checked = checkTimeSpan(user)
@@ -117,7 +119,7 @@ router.post('/checkin', upload.single('file'), async (req, res) => {
 
         // IF CHECKED IN PREVENT
         if (alreadyCheckedIn) {
-            return res.status(400).json({ message: 'User checked in within the last 24 hours' });
+            return res.status(200).json({ message: 'User checked in within the last 24 hours', attend: true });
         }
 
         // ELSE CHECKED ATTENDANCE
@@ -128,15 +130,13 @@ router.post('/checkin', upload.single('file'), async (req, res) => {
             selfieImage,
         };
 
-        console.log("ATTEND TRUE")
-
         const userAttend = await UserModel.updateOne(
             { _id: userID },
             { $push: { attendance: newAttendance } },
             { new: true }
         );
 
-        return res.status(200).json({ message: 'Attendance checked in successfully', userAttend });
+        return res.status(200).json({ message: 'Attendance checked in successfully', userAttend, attend: 'done' });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Server Error' });
